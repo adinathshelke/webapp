@@ -1,41 +1,58 @@
 pipeline {
-    agent any
-
+    agent {
+        node {
+            label 'master'
+            customWorkspace '/mnt/adinath11'
+        }
+    }
     stages {
-        stage ('Compile Stage') {
-
-            steps {
-                
-                    sh 'mvn clean compile'
-                }
-            
+        stage('git repository clone') {
+          
+             steps {
+                   cleanWs ()
+                   
+                   
+                sh "git clone https://github.com/adinathshelke/webapp.git"
+            }
         }
-
-        stage ('Testing Stage') {
-
-            steps {
-                
-                    sh 'mvn test'
+        stage('build the java application') {
+            agent {
+                node {
+                    label 'master'
+                    customWorkspace '/mnt/adinath11/webapp'
                 }
-            
+            }
+            steps {
+                sh "mvn clean install"
+            }
         }
-
-
-        stage ('Install Stage') {
-            steps {
-                
-                    sh 'mvn install'
+        stage('deploying on slave1 jenkins machine') {
+            agent {
+                node {
+                    label 'master'
+                    customWorkspace '/mnt/adinath11/'
                 }
-            
+            }
+            steps {
+               sh "ssh -i /mnt/adimumbai.pem ec2-user@172.31.7.231 -o StrictHostKeyChecking=no"
+
+
+             sh "scp -i /mnt/adimumbai.pem /mnt/adinath11/webapp/target/WebApp.war ec2-user@172.31.7.231:/mnt/servers/apache-tomcat-9.0.76/webapps/"
+            }
         }
-        
-        stage ('Echo Branch') {
-
-            steps {
-                
-                    echo "This is master branch"
+        stage('deploying on slave2 jenkins machine') {
+            agent {
+                node {
+                    label 'master'
+                    customWorkspace '/mnt/adinath11/'
                 }
-            
+            }
+            steps {
+            sh "ssh -i /mnt/adimumbai.pem ec2-user@172.31.11.169 -o StrictHostKeyChecking=no"
+
+
+            sh "scp -i /mnt/adimumbai.pem /mnt/adinath11/webapp/target/WebApp.war ec2-user@172.31.11.169:/mnt/servers/apache-tomcat-9.0.76/webapps/"
+            }
         }
     }
 }
